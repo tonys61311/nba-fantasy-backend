@@ -1,6 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
-import { NewsService } from '@/news/news.service';
-import { LatestNewsItem, LatestNewsResponse } from '@/common/models/news';
+import { Controller, Get, Query } from '@nestjs/common';
+import { NewsService } from './news.service';
+import { LatestNewsItem, LatestNewsResponse, ArticleContent } from '../common/models/news';
 
 @Controller('news')
 export class NewsController {
@@ -10,5 +10,10 @@ export class NewsController {
   async getLatest(): Promise<LatestNewsResponse> {
     const items: LatestNewsItem[] = await this.newsService.getLatestNews();
     return { data: items };
+  }
+
+  @Get('article')
+  async getArticle(@Query('url') url: string): Promise<ArticleContent> {
+    return this.newsService.getArticleContent(url);
   }
 }

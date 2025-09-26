@@ -18,10 +18,12 @@ export default tseslint.config([{
     },
     {
         rules: {
-            // ✅ 關掉空格/空行相關的報錯
+            // 關掉空格/空行相關的報錯
             'no-trailing-spaces': 'off',
             'no-multiple-empty-lines': 'off',
             'padded-blocks': 'off',
+            '@typescript-eslint/no-explicit-any': 'off',
+            'no-empty': 'off', // 關掉Empty block statement
         },
     },
 ]);
