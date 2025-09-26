@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpModule, HttpService } from '@nestjs/axios';
 import { of, throwError } from 'rxjs';
-import { NewsService } from './news.service.js';
+import { NewsService } from './news.service';
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 describe('NewsService', () => {
   let service: NewsService;
@@ -18,17 +19,18 @@ describe('NewsService', () => {
   });
 
   it('should return an array item containing title, link, translated', async () => {
-    jest.spyOn(httpService, 'get').mockReturnValue(
-      of({
-        data: {
-          items: [{ title: 'Mock Title', link: 'https://example.com/news/1' }],
-        },
-        status: 200,
-        statusText: 'OK',
-        headers: {},
-        config: {},
-      } as any),
-    );
+    type ItemsData = { items: Array<{ title?: string; link?: string }> };
+    const mockConfig = { headers: {} } as InternalAxiosRequestConfig;
+    const mockResponse: AxiosResponse<ItemsData> = {
+      data: {
+        items: [{ title: 'Mock Title', link: 'https://example.com/news/1' }],
+      },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: mockConfig,
+    };
+    jest.spyOn(httpService, 'get').mockReturnValue(of(mockResponse));
 
     const result = await service.getLatestNews();
 
@@ -44,9 +46,16 @@ describe('NewsService', () => {
   });
 
   it('should return empty array when data items is empty', async () => {
-    jest
-      .spyOn(httpService, 'get')
-      .mockReturnValue(of({ data: { items: [] } } as any));
+    type ItemsData = { items: Array<{ title?: string; link?: string }> };
+    const mockConfig = { headers: {} } as InternalAxiosRequestConfig;
+    const mockResponse: AxiosResponse<ItemsData> = {
+      data: { items: [] },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: mockConfig,
+    };
+    jest.spyOn(httpService, 'get').mockReturnValue(of(mockResponse));
 
     const result = await service.getLatestNews();
     expect(result).toEqual([]);

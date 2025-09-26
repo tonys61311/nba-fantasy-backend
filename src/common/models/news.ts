@@ -7,5 +7,3 @@ export interface LatestNewsItem {
 export interface LatestNewsResponse {
   data: LatestNewsItem[];
 }
-
-

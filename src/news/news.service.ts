@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { XMLParser } from 'fast-xml-parser';
-import { LatestNewsItem } from '@/common/models/news.js';
-import { ensureArray, RssDocument, RssItem } from '@/common/models/rss.js';
+import { LatestNewsItem } from '@/common/models/news';
+import { ensureArray, RssDocument, RssItem } from '@/common/models/rss';
 
 // moved LatestNewsItem to common/models
 

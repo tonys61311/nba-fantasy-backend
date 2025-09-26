@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
-import { NewsController } from './news.controller.js';
-import { NewsService } from './news.service.js';
+import { NewsController } from './news.controller';
+import { NewsService } from './news.service';
 
 @Module({
   imports: [
