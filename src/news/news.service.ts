@@ -75,112 +75,34 @@ export class NewsService {
     const cheerio = await import('cheerio');
     const $ = cheerio.load(html);
 
+    const titleFromHeader = $('header.article-header h1').first().text().trim();
     const title =
+      titleFromHeader ||
       $('meta[property="og:title"]').attr('content') ||
       $('meta[name="twitter:title"]').attr('content') ||
       $('title').first().text().trim();
 
-    // 嘗試找主要內容容器（多個常見選擇器）
-    const candidates = [
-      'article',
-      '[role="article"]',
-      '[itemprop="articleBody"]',
-      '[data-testid="story-container"]',
-      '[data-testid="article-body"]',
-      '[data-behavior="article_body"]',
-      '.Article__Content',
-      '.article-body',
-      '.article-content',
-      '.story-content',
-      '#article-feed',
-      '.content',
-      'main article',
-    ];
-    let container = $(candidates.join(',')).first();
-    if (!container || container.length === 0) {
-      container = $('body');
-    }
-
     const blocks: ArticleBlock[] = [];
-    type CheerioEl = ReturnType<typeof $>;
-    const pickSrc = (node: CheerioEl): string | undefined => {
-      return (
-        node.attr('src') ||
-        node.attr('data-src') ||
-        (node.attr('srcset')?.split(',').pop()?.trim().split(' ')[0]) ||
-        undefined
-      );
-    };
 
-    container
-      .find('p, h1, h2, h3, h4, h5, h6, figure img, figure picture img, picture img, img')
-      .each((_, el) => {
-      const node = $(el);
-      if (node.is('img')) {
-          const src = pickSrc(node) || '';
-          if (src) {
-            const alt = node.attr('alt') || undefined;
-            const caption = node.closest('figure').find('figcaption').text().trim() || undefined;
-            blocks.push({ type: 'image', src, alt, caption });
-          }
-          return;
-      }
-
-      const tag = node.prop('tagName')?.toLowerCase();
-      if (tag && /^(p|h1|h2|h3|h4|h5|h6)$/.test(tag)) {
-        const htmlContent = $.html(node.contents());
-        const cleaned = htmlContent.replace(/\n+/g, '\n').trim();
-        if (cleaned) {
-          blocks.push({ type: 'text', html: cleaned });
-        }
-      }
-      });
-
-    // 後援：若無法從 DOM 萃取，嘗試讀取 JSON-LD 的 articleBody 與 image
-    if (blocks.length === 0) {
-      $('script[type="application/ld+json"]').each((_, el) => {
-        try {
-          const json = $(el).contents().text();
-          if (!json) return;
-          const data = JSON.parse(json);
-          const candidates: any[] = Array.isArray(data) ? data : [data];
-          for (const obj of candidates) {
-            const types: string[] = ([] as string[]).concat(obj['@type'] || []);
-            if (types.includes('Article') || types.includes('NewsArticle')) {
-              const body: string | undefined = obj.articleBody || obj.description;
-              if (body) {
-                body
-                  .split(/\n\n+/)
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-                  .forEach((para) => blocks.push({ type: 'text', html: para }));
-              }
-              const image = obj.image;
-              const imageUrls: string[] = Array.isArray(image)
-                ? image
-                : image && typeof image === 'object' && image.url
-                ? [image.url]
-                : typeof image === 'string'
-                ? [image]
-                : [];
-              for (const src of imageUrls) {
-                blocks.push({ type: 'image', src });
-              }
-              if (blocks.length > 0) break;
+    // ESPN 結構：標題在 header.article-header > h1；內文位於 .article-body 的段落
+    const espnBody = $('#article-feed article .article-body').first();
+    if (espnBody && espnBody.length) {
+      const nodes = espnBody.find('h1, h2, h3, h4, h5, h6, p');
+      if (nodes.length) {
+        nodes.each((_, elNode) => {
+          const htmlContent = $.html($(elNode).contents()).trim();
+          if (htmlContent) {
+            const tagName = $(elNode).prop('tagName')?.toLowerCase();
+            const textContent = $(elNode).text().replace(/\s+/g, ' ').trim();
+            if (tagName && /^h[1-6]$/.test(tagName)) {
+              const level = Number(tagName.substring(1)) as 1 | 2 | 3 | 4 | 5 | 6;
+              blocks.push({ type: 'text', html: htmlContent, text: textContent, isHeading: true, headingLevel: level });
+            } else {
+              blocks.push({ type: 'text', html: htmlContent, text: textContent });
             }
           }
-        } catch {
-          
-        }
-      });
-    }
-
-    // 最後後援：取 body 內段落，避免完全空陣列
-    if (blocks.length === 0) {
-      $('body p').slice(0, 10).each((_, el) => {
-        const text = $(el).text().trim();
-        if (text) blocks.push({ type: 'text', html: text });
-      });
+        });
+      }
     }
 
     return { title, blocks, url };
