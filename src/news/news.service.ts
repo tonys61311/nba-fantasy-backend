@@ -4,12 +4,16 @@ import { firstValueFrom } from 'rxjs';
 import { XMLParser } from 'fast-xml-parser';
 import { LatestNewsItem, ArticleContent, ArticleBlock } from '../common/models/news';
 import { ensureArray, RssDocument, RssItem } from '../common/models/rss';
+import OpenAI from 'openai';
 
 // moved LatestNewsItem to common/models
 
 @Injectable()
 export class NewsService {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly openai: OpenAI,
+  ) {}
 
   async getLatestNews(): Promise<LatestNewsItem[]> {
     try {
@@ -72,6 +76,7 @@ export class NewsService {
     );
 
     const html = String(response.data ?? '');
+
     const cheerio = await import('cheerio');
     const $ = cheerio.load(html);
 
@@ -90,21 +95,106 @@ export class NewsService {
       const nodes = espnBody.find('h1, h2, h3, h4, h5, h6, p');
       if (nodes.length) {
         nodes.each((_, elNode) => {
+          if ($(elNode).closest('aside').length) {
+            return;
+          }
           const htmlContent = $.html($(elNode).contents()).trim();
           if (htmlContent) {
             const tagName = $(elNode).prop('tagName')?.toLowerCase();
             const textContent = $(elNode).text().replace(/\s+/g, ' ').trim();
             if (tagName && /^h[1-6]$/.test(tagName)) {
               const level = Number(tagName.substring(1)) as 1 | 2 | 3 | 4 | 5 | 6;
-              blocks.push({ type: 'text', html: htmlContent, text: textContent, isHeading: true, headingLevel: level });
+              blocks.push({ type: 'text', text: textContent, isHeading: true, headingLevel: level });
             } else {
-              blocks.push({ type: 'text', html: htmlContent, text: textContent });
+              blocks.push({ type: 'text', text: textContent });
             }
           }
         });
       }
     }
 
-    return { title, blocks, url };
+    const article: ArticleContent = { title, blocks, url };
+    const aiResult = await this.parseWithAI(article);
+    return aiResult;
+  }
+
+  async parseWithAI(input: ArticleContent): Promise<ArticleContent> {
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.5,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: [
+              '你是專業的體育編輯與中文寫作者。',
+              '任務：先完整理解使用者提供的 ArticleContent（含標題與段落），不要逐句翻譯，請用中文且帶點幽默的口吻重寫內容。',
+              '要求：',
+              '- 僅輸出 JSON 物件（不得出現多餘文字）。',
+              '- 輸出結構必須與輸入一致：包含 url、title、blocks（每筆 block 為 type="text" 或 type="image"）。',
+              '- 標題（isHeading=true 的 text block）必須保留並維持原本順序，可調整標題文字為中文幽默風格；headingLevel 不可改。',
+              '- 標題底下的段落可自由整合/濃縮/改寫成自然中文，避免逐句直譯；允許段落數量與原文不同。',
+              '- 若有 image block，請原樣保留（src/alt/caption 不改）。',
+              '- 專有名詞（球員、隊名）可保留原文並自然嵌入中文敘述。',
+            ].join('\n'),
+          },
+          {
+            role: 'user',
+            content: [
+              '請將以下 ArticleContent 轉為中文且帶點幽默風格：',
+              JSON.stringify(input),
+            ].join('\n'),
+          },
+        ],
+      });
+
+      const raw = completion.choices[0]?.message?.content ?? '{}';
+      const parsed = JSON.parse(raw) as ArticleContent;
+
+      // 守護：確保必要欄位與型別；允許與原文不同的段落數量
+      const safe: ArticleContent = {
+        url: parsed?.url || input.url,
+        title: parsed?.title ?? input.title,
+        blocks: Array.isArray(parsed?.blocks) && parsed.blocks.length > 0
+          ? parsed.blocks.map((b: any) => {
+              if (!b || typeof b !== 'object') {
+                return { type: 'text', text: '內容解析失敗' };
+              }
+              if (b.type === 'text') {
+                const isHeading = typeof b.isHeading === 'boolean' ? b.isHeading : false;
+                const level = typeof b.headingLevel === 'number' ? b.headingLevel : undefined;
+                const text = typeof b.text === 'string' ? b.text : '';
+                return { type: 'text', text, isHeading, headingLevel: level };
+              }
+              if (b.type === 'image') {
+                return {
+                  type: 'image',
+                  src: typeof b.src === 'string' ? b.src : '',
+                  alt: typeof b.alt === 'string' ? b.alt : undefined,
+                  caption: typeof b.caption === 'string' ? b.caption : undefined,
+                };
+              }
+              return { type: 'text', text: '內容解析失敗' };
+            })
+          : [
+              { type: 'text', text: '內容解析失敗' },
+            ],
+      };
+
+      return safe;
+    } catch (err) {
+      const anyErr = err as any;
+      console.error('OpenAI translate-humorize failed', {
+        message: anyErr?.message,
+        status: anyErr?.status,
+        code: anyErr?.code,
+        type: anyErr?.type,
+        requestID: anyErr?.requestID,
+        error: anyErr?.error,
+      });
+      // 失敗時回傳原始輸入，避免中斷
+      return input;
+    }
   }
 }
