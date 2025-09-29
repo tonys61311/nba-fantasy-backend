@@ -35,7 +35,7 @@ export class NewsService {
         if (!items.length) return [];
         return items.map((item) => ({
           title: item.title ?? '',
-          link: item.link ?? '',
+          url: item.link ?? '',
           translated: `ZH: ${item.title ?? ''}`,
         }));
       }
@@ -56,7 +56,7 @@ export class NewsService {
       if (!items.length) return [];
       return items.map((item) => ({
         title: item?.title ?? '',
-        link: item?.link ?? '',
+        url: item?.link ?? '',
         translated: `ZH: ${item?.title ?? ''}`,
       }));
     } catch {

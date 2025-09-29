@@ -3,6 +3,7 @@ import { HttpModule, HttpService } from '@nestjs/axios';
 import { of, throwError } from 'rxjs';
 import { NewsService } from './news.service';
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import OpenAI from 'openai';
 
 describe('NewsService', () => {
   let service: NewsService;
@@ -11,14 +12,22 @@ describe('NewsService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [HttpModule],
-      providers: [NewsService],
+      providers: [
+        NewsService,
+        {
+          provide: OpenAI,
+          useValue: {
+            chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{}' } }] }) } },
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<NewsService>(NewsService);
     httpService = module.get<HttpService>(HttpService);
   });
 
-  it('should return an array item containing title, link, translated', async () => {
+  it('should return an array item containing title, url, translated', async () => {
     type ItemsData = { items: Array<{ title?: string; link?: string }> };
     const mockConfig = { headers: {} } as InternalAxiosRequestConfig;
     const mockResponse: AxiosResponse<ItemsData> = {
@@ -39,7 +48,7 @@ describe('NewsService', () => {
     expect(result[0]).toEqual(
       expect.objectContaining({
         title: expect.any(String),
-        link: expect.any(String),
+        url: expect.any(String),
         translated: expect.any(String),
       }),
     );

@@ -1,6 +1,6 @@
 export interface LatestNewsItem {
   title: string;
-  link: string;
+  url: string;
   translated: string;
 }
 
