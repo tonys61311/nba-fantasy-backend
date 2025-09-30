@@ -5,6 +5,7 @@ import { XMLParser } from 'fast-xml-parser';
 import { LatestNewsItem, ArticleContent, ArticleBlock } from '../common/models/news';
 import { ensureArray, RssDocument, RssItem } from '../common/models/rss';
 import OpenAI from 'openai';
+import { FirestoreRepository } from '../firebase/firestore.repository';
 
 // moved LatestNewsItem to common/models
 
@@ -13,6 +14,7 @@ export class NewsService {
   constructor(
     private readonly httpService: HttpService,
     private readonly openai: OpenAI,
+    private readonly firestoreRepository: FirestoreRepository,
   ) {}
 
   async getLatestNews(): Promise<LatestNewsItem[]> {
@@ -163,17 +165,21 @@ export class NewsService {
               }
               if (b.type === 'text') {
                 const isHeading = typeof b.isHeading === 'boolean' ? b.isHeading : false;
-                const level = typeof b.headingLevel === 'number' ? b.headingLevel : undefined;
                 const text = typeof b.text === 'string' ? b.text : '';
-                return { type: 'text', text, isHeading, headingLevel: level };
+                const output: any = { type: 'text', text, isHeading };
+                if (typeof b.headingLevel === 'number') {
+                  output.headingLevel = b.headingLevel as 1 | 2 | 3 | 4 | 5 | 6;
+                }
+                return output;
               }
               if (b.type === 'image') {
-                return {
+                const output: any = {
                   type: 'image',
                   src: typeof b.src === 'string' ? b.src : '',
-                  alt: typeof b.alt === 'string' ? b.alt : undefined,
-                  caption: typeof b.caption === 'string' ? b.caption : undefined,
                 };
+                if (typeof b.alt === 'string') output.alt = b.alt;
+                if (typeof b.caption === 'string') output.caption = b.caption;
+                return output;
               }
               return { type: 'text', text: '內容解析失敗' };
             })
@@ -196,5 +202,28 @@ export class NewsService {
       // 失敗時回傳原始輸入，避免中斷
       return input;
     }
+  }
+
+  // 每日排程：抓最新清單，逐一取得文章；若已存在（以 URL 雜湊查）則跳過，否則解析並存成單篇文件
+  async fetchAndSaveNewsDaily(limit: number = Infinity): Promise<ArticleContent[]> {
+    const allLatest: LatestNewsItem[] = await this.getLatestNews();
+    const latest = allLatest.slice(0, limit);
+    if (!latest.length) {
+      return [];
+    }
+
+    for (const item of latest) {
+      if (!item?.url) continue;
+      const exists = await this.firestoreRepository.articleExists(item.url);
+      if (exists) continue;
+      const content = await this.getArticleContent(item.url);
+      await this.firestoreRepository.saveArticle(content);
+    }
+
+    return this.getLatestArticlesFromRepo(latest.length);
+  }
+
+  async getLatestArticlesFromRepo(limit = 10): Promise<ArticleContent[]> {
+    return this.firestoreRepository.getLatestArticles(limit);
   }
 }
