@@ -19,7 +19,8 @@
         "test:watch": "jest --watch",
         "test:cov": "jest --coverage",
         "test:debug": "node --inspect-brk -r ts-node/register node_modules/.bin/jest --runInBand",
-        "test:e2e": "jest --config ./test/jest-e2e.json"
+        "test:e2e": "jest --config ./test/jest-e2e.json",
+        "whitelist:create": "ts-node src/scripts/create-whitelist.ts"
     },
     "dependencies": {
         "@nestjs/axios": "^4.0.1",
@@ -30,6 +31,8 @@
         "@nestjs/schedule": "^6.0.1",
         "axios": "^1.12.2",
         "cheerio": "^1.1.2",
+        "class-transformer": "^0.5.1",
+        "class-validator": "^0.14.2",
         "fast-xml-parser": "^5.2.5",
         "firebase-admin": "^13.5.0",
         "openai": "^5.23.1",

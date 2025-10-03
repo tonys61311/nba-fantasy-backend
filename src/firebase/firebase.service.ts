@@ -34,6 +34,10 @@ export class FirebaseService {
   getMessaging() {
     return this.app.messaging();
   }
+
+  getAuth() {
+    return this.app.auth();
+  }
 }
 
 
