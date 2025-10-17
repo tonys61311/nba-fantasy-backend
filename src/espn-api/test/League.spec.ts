@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { League } from '../basketball/League';
+jest.setTimeout(60000);
 
 describe('League (basketball)', () => {
   it('should construct without fetching when fetchLeague=false', () => {
@@ -11,9 +12,9 @@ describe('League (basketball)', () => {
 
   it('should fetch real league data with .env credentials', async () => {
     jest.setTimeout(30000);
-    const leagueId = Number(process.env.league_id ?? process.env.LEAGUE_ID);
-    const year = Number(process.env.year ?? process.env.YEAR);
-    const espn_s2 = process.env.espn_s2 ?? process.env.ESPN_S2;
+    const leagueId = Number(process.env.LEAGUE_ID ?? process.env.league_id);
+    const year = Number(process.env.SESSION_ID ?? process.env.SEASON_ID ?? process.env.YEAR ?? process.env.year);
+    const espn_s2 = process.env.ESPN_S2 ?? process.env.espn_s2;
     const swid = process.env.SWID ?? process.env.swid;
 
     if (!leagueId || !year || !espn_s2 || !swid) {
@@ -28,9 +29,9 @@ describe('League (basketball)', () => {
 
   it('should call and log all public League methods with .env credentials', async () => {
     jest.setTimeout(60000);
-    const leagueId = Number(process.env.league_id ?? process.env.LEAGUE_ID);
-    const year = Number(process.env.year ?? process.env.YEAR);
-    const espn_s2 = process.env.espn_s2 ?? process.env.ESPN_S2;
+    const leagueId = Number(process.env.LEAGUE_ID ?? process.env.league_id);
+    const year = Number(process.env.SESSION_ID ?? process.env.SEASON_ID ?? process.env.YEAR ?? process.env.year);
+    const espn_s2 = process.env.ESPN_S2 ?? process.env.espn_s2;
     const swid = process.env.SWID ?? process.env.swid;
 
     if (!leagueId || !year || !espn_s2 || !swid) {

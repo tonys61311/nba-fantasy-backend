@@ -1,11 +1,13 @@
 import 'dotenv/config';
 import { League } from '../basketball/League';
 
+import { env } from '../../config/env';
+
 async function main() {
-  const leagueId = Number(process.env.league_id ?? process.env.LEAGUE_ID);
-  const year = Number(process.env.year ?? process.env.YEAR);
-  const espn_s2 = process.env.espn_s2 ?? process.env.ESPN_S2;
-  const swid = process.env.SWID ?? process.env.swid;
+  const leagueId = env.getLeagueId();
+  const year = env.getSessionId();
+  const espn_s2 = env.getEspnS2();
+  const swid = env.getSwid();
 
   if (!leagueId || !year || !espn_s2 || !swid) {
     console.error('Missing env: league_id, year, espn_s2, SWID');

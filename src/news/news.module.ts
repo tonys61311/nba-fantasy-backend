@@ -7,6 +7,7 @@ import OpenAI from 'openai';
 import { FirestoreRepository } from '../firebase/firestore.repository';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NewsScheduler } from './news.scheduler';
+import { env } from '../config/env';
 @Module({
   imports: [
     FirebaseModule,
@@ -23,7 +24,7 @@ import { NewsScheduler } from './news.scheduler';
     NewsScheduler,
     {
       provide: OpenAI,
-      useFactory: () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+      useFactory: () => new OpenAI({ apiKey: env.getOpenAiApiKey() }),
     },
   ],
   exports: [NewsService],

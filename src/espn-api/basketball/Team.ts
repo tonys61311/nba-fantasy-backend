@@ -12,6 +12,8 @@ export class Team {
   ties?: number;
   points_for?: number;
   points_against?: number;
+  points?: number;
+  points_by_stat?: Record<string, number> | undefined;
   logo_url?: string;
   owners?: any[];
 
@@ -28,6 +30,9 @@ export class Team {
     this.losses = data?.record?.overall?.losses ?? 0;
     this.ties = data?.record?.overall?.ties ?? 0;
     this.points_for = data?.record?.overall?.pointsFor ?? 0;
+    // ESPN Roto/分類制的總積分
+    if (typeof data?.points === 'number') this.points = data.points;
+    this.points_by_stat = data?.pointsByStat ?? undefined;
     this.points_against = typeof data?.record?.overall?.pointsAgainst === 'number' ? Math.round(data.record.overall.pointsAgainst * 100) / 100 : 0;
     this.standing = data?.playoffSeed ?? 0;
     this.final_standing = data?.rankCalculatedFinal ?? 0;

@@ -1,12 +1,13 @@
 import * as admin from 'firebase-admin';
 import { Injectable } from '@nestjs/common';
+import { env } from '../config/env';
 
 @Injectable()
 export class FirebaseService {
   private readonly app: admin.app.App;
 
   constructor() {
-    const configJson = process.env.FIREBASE_CONFIG; // 直接是 JSON 字串
+    const configJson = env.getFirebaseConfigJson(); // 直接是 JSON 字串
     let credential: admin.credential.Credential | undefined;
 
     if (configJson && configJson.trim().length > 0) {

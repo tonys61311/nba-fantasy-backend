@@ -10,6 +10,7 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { FirestoreRepository } from '../firebase/firestore.repository';
 import { NewsService } from './news.service';
 import { NewsScheduler } from './news.scheduler';
+import { env } from '../config/env';
 
 jest.setTimeout(60000);
 
@@ -53,7 +54,7 @@ describe('NewsScheduler Firestore Integration', () => {
 
   it('should persist documents into Firestore when handleDailyFetch runs', async () => {
     // 環境無 Firebase 憑證時跳過
-    if (!process.env.FIREBASE_CONFIG && !process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 && !process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GOOGLE_CLOUD_PROJECT && !process.env.GCLOUD_PROJECT && !process.env.FIREBASE_PROJECT_ID) {
+    if (!env.hasFirebaseCredentials()) {
       console.warn('Skipping Firestore integration: missing Firebase credentials');
       return;
     }
