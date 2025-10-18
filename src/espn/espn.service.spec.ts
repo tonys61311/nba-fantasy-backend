@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EspnService } from './espn.service';
+import * as imageUtil from '../common/utils/fetchImageAsBase64';
 
 // Mock League class to avoid real network calls
 jest.mock('../espn-api/basketball/League', () => {
   const mockStandings = jest.fn().mockReturnValue([
-    { team_name: "Tony's Dream Team", wins: 5, losses: 2, points_for: 823.5 },
-    { team_name: 'Katniss Flaming Arrows', wins: 4, losses: 3, points_for: 795.0 },
+    { team_name: "Tony's Dream Team", wins: 5, losses: 2, points_for: 823.5, points: 823.5, logo_url: 'https://logo/1.png' },
+    { team_name: 'Katniss Flaming Arrows', wins: 4, losses: 3, points_for: 795.0, points: 795.0, logo_url: 'https://logo/2.png' },
   ]);
   return {
     League: class LeagueMock {
@@ -30,16 +31,17 @@ describe('EspnService', () => {
     service = module.get<EspnService>(EspnService);
   });
 
-  it('should build League and return Team[] standings', async () => {
+  it('should return standings with logoBase64 embedded', async () => {
+    const spy = jest.spyOn(imageUtil, 'fetchImageAsBase64').mockResolvedValue('data:image/png;base64,AAA');
     const res = await service.standings({ leagueId: 123456, seasonId: 2025 });
     expect(res.status).toBe('ok');
     expect(res.seasonId).toBe(2025);
     expect(Array.isArray(res.standings)).toBe(true);
-    expect(res.standings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ team_name: "Tony's Dream Team", points_for: 823.5 }),
-      ]),
-    );
+    // ensure base64 attached
+    expect(res.standings[0]).toHaveProperty('logoBase64', 'data:image/png;base64,AAA');
+    expect(res.standings[1]).toHaveProperty('logoBase64', 'data:image/png;base64,AAA');
+    // ensure util called twice
+    expect(spy).toHaveBeenCalledTimes(2);
   });
 
 });
